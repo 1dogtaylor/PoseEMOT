@@ -5,6 +5,7 @@ import os
 from deepface import DeepFace
 import pandas as pd
 import tqdm
+from video_name_processing import get_file_names_from_all_pickle, get_video_files_from_path, is_video_processed
 mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
 
@@ -95,6 +96,7 @@ def frame_extract(frame):
 
 path = "/Users/taylorbrandl/Taylor/Python/Nimbus/DroneFollower/Pose Estimation/POSE DATA/Ted Talks/"
 test_path = "/Users/taylorbrandl/Taylor/Python/Nimbus/DroneFollower/Pose Estimation/POSE DATA/Ted Talks/test.mp4"
+path_to_pkl_directory = "/VideoFiles"
 first = True
 df_full = pd.DataFrame(columns=['filename','frame','pose set','emotion','pose','pictures'])
 df_vis = pd.DataFrame(columns=['filename','frame','pose_set','emotion','pose','pictures'])
@@ -102,7 +104,12 @@ df_3min = pd.DataFrame(columns=['filename','frame','pose_set','emotion','pose','
 drawing = False
 video_files = [] 
 # get list of files at directory
-video_files = [filename for filename in os.listdir(path) if filename.endswith(('.mp4', '.avi', '.MOV', '.mov')) and not filename.__contains__('Test') and  not filename.__contains__('2023-karen-bakker-003-398193b5-571f-435d-82e1-5000k')]
+# video_files = [filename for filename in os.listdir(path) if filename.endswith(('.mp4', '.avi', '.MOV', '.mov')) and not filename.__contains__('Test') and  not filename.__contains__('2023-karen-bakker-003-398193b5-571f-435d-82e1-5000k')]
+video_files = get_video_files_from_path(path)
+all_processed_video_names = get_file_names_from_all_pickle(path_to_pkl_directory)
+# Filter out already processed videos
+video_files = [video for video in video_files if not is_video_processed(video, all_processed_video_names)]
+
 total_videos = len(video_files)
 videos_processed = 0
 total_poses = 0
