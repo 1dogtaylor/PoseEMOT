@@ -10,18 +10,20 @@ from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 
 
-df = pd.DataFrame(columns=['filename','frame','pose set','emotion','pose','pictures'])
+#df = pd.DataFrame(columns=['filename','frame','pose set','emotion','pose','pictures'])
 
 path = "/Users/taylorbrandl/Taylor/Python/Nimbus/DroneFollower/Pose Estimation/POSE DATA/GEMEP_Coreset_Full Body/"
-print("Loading data...")
-for file in os.listdir(path):
-	if file.endswith('.pkl') and file.startswith('full'):
-		with open(path+file, 'rb') as f:
-			data = pickle.load(f)
-			df = pd.concat([df, data])
-			print(file)
+#print("Loading data...")
+#for file in os.listdir(path):
+#	if file.endswith('.pkl') and file.startswith('full'):
+#		with open(path+file, 'rb') as f:
+#			data = pickle.load(f)
+#			df = pd.concat([df, data])
+#			print(file)
 
 
+
+df = pd.read_csv(path)
 
 
 
