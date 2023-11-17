@@ -64,9 +64,8 @@ def tune_and_train(train_x, train_y, val_x, val_y, mode):
 
     best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
     model = build_model(best_hps)
-    model.summary()
     history = model.fit(train_x, train_y, epochs=100, validation_data=(val_x, val_y), callbacks=[TqdmCallback(verbose=1), early_stopping])
-    model.save(os.join.path(SAVE_DIR_PATH, f'{mode}_best_dense.h5'))
+    model.save(os.path.join(SAVE_DIR_PATH, f'{mode}_best_dense.h5'))
 
     return model, history, tuner
 
