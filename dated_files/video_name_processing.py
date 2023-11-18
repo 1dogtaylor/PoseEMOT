@@ -5,6 +5,7 @@ def get_video_files_from_path(path):
     #video extensions to search for
     video_extensions = ('.mp4', '.avi', '.MOV', '.mov')
     list_video_files = [filename for filename in os.listdir(path) if filename.endswith(video_extensions)]
+    print(list_video_files)
     return list_video_files
 
 def get_file_names_from_all_pickle(path):
@@ -24,10 +25,13 @@ def get_file_names_from_all_pickle(path):
             filenames = video_files_df.iloc[:, 0].tolist()
             all_filenames.extend(filenames)
 
+    # print(all_filenames)
     return all_filenames
 
 def is_video_processed(current_title, processed_video_names):
     # returns boolean, "if current_title in processed_vf..."
+    # print(current_title in processed_video_names)
+    # print("\n")
     return current_title in processed_video_names
 
 # Example usage:

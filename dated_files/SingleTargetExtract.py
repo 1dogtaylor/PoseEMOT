@@ -94,9 +94,10 @@ def frame_extract(frame):
 	else: # if no person found by mediapipe
 		return None, None, None
 
-path = "/Users/taylorbrandl/Taylor/Python/Nimbus/DroneFollower/Pose Estimation/POSE DATA/Ted Talks/"
+# path = "/Users/taylorbrandl/Taylor/Python/Nimbus/DroneFollower/Pose Estimation/POSE DATA/Ted Talks/"
+path = "C:/Users/Lejett/Desktop/TED_Dataset"
 test_path = "/Users/taylorbrandl/Taylor/Python/Nimbus/DroneFollower/Pose Estimation/POSE DATA/Ted Talks/test.mp4"
-path_to_pkl_directory = "/VideoFiles"
+path_to_pkl_directory = "./VideoFiles"
 first = True
 df_full = pd.DataFrame(columns=['filename','frame','pose set','emotion','pose','pictures'])
 df_vis = pd.DataFrame(columns=['filename','frame','pose_set','emotion','pose','pictures'])
