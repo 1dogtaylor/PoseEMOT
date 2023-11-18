@@ -24,32 +24,39 @@ def load_and_preprocess_data():
     return train_test_split(train_x, train_y, test_size=0.3, random_state=42), \
            train_test_split(shuf_train_x, shuf_train_y, test_size=0.3, random_state=42)
 
-# Model building
+
 def build_model(hp):
     model = tf.keras.Sequential()
-    batch_size = hp.Int('batch_size', 16, 128, step=16)
 
     for i in range(hp.Int('num_lstm_layers', 1, 4)):
         model.add(tf.keras.layers.LSTM(units=hp.Int('lstm_units_' + str(i), 32, 256, step=32),
-                                       return_sequences=True if i < hp.get('num_lstm_layers') - 1 else False,
-                                       dropout=hp.Float('lstm_dropout_' + str(i), 0.1, 0.5, step=0.1),
-                                       recurrent_dropout=hp.Float('recurrent_dropout_' + str(i), 0.1, 0.5, step=0.1)))
+                                       return_sequences=True if i < hp.get('num_lstm_layers') - 1 else False)) #,
+                                    #    dropout=hp.Float('lstm_dropout_' + str(i), 0.1, 0.5, step=0.1),
+                                    #    recurrent_dropout=hp.Float('recurrent_dropout_' + str(i), 0.1, 0.5, step=0.1)))
 
     model.add(tf.keras.layers.Dense(units=hp.Int('dense_units', 32, 256, step=32),
                                     activation='relu',
                                     kernel_regularizer=tf.keras.regularizers.l1_l2(hp.Float('l1_reg', 1e-5, 1e-2, sampling='LOG'),
-                                                                          hp.Float('l2_reg', 1e-5, 1e-2, sampling='LOG'))))
+                                                                                  hp.Float('l2_reg', 1e-5, 1e-2, sampling='LOG'))))
 
     model.add(tf.keras.layers.Dropout(hp.Float('dropout', 0.1, 0.5, step=0.1)))
     model.add(tf.keras.layers.Dense(7, activation='softmax'))
 
-    model.compile(optimizer=hp.Choice('optimizer', ['adam', 'rmsprop']),
+    # Choose optimizer
+    optimizer_name = hp.Choice('optimizer', ['adam', 'rmsprop'])
+    learning_rate = hp.Float('learning_rate', 1e-4, 1e-2, sampling='LOG')
+
+    if optimizer_name == 'adam':
+        optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+    elif optimizer_name == 'rmsprop':
+        optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate)
+
+    model.compile(optimizer=optimizer,
                   loss='categorical_crossentropy',
-                  metrics=['accuracy'],
-                  learning_rate=hp.Float('learning_rate', 1e-4, 1e-2, sampling='LOG'),
-                  batch_size=batch_size)
+                  metrics=['accuracy'])
 
     return model
+
 
 # Hyperparameter tuning and training
 def tune_and_train(train_x, train_y, val_x, val_y, mode):
@@ -63,15 +70,14 @@ def tune_and_train(train_x, train_y, val_x, val_y, mode):
         overwrite=True
     )
 
-    early_stopping = EarlyStopping(monitor='val_loss', patience=15)
+    early_stopping = EarlyStopping(monitor='val_loss', patience=10)
     tuner.search(train_x, train_y, epochs=50, validation_data=(val_x, val_y), callbacks=[early_stopping], verbose=1)
 
 
     best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
-    best_batch_size = best_hps.get('batch_size')
     model = build_model(best_hps)
-    history = model.fit(train_x, train_y, epochs=500, batch_size=best_batch_size, validation_data=(val_x, val_y), callbacks=[TqdmCallback(verbose=1), early_stopping])
-    model.save(os.path.join(SAVE_DIR_PATH, f'{mode}_best_dense.h5'))
+    history = model.fit(train_x, train_y, epochs=250, validation_data=(val_x, val_y), callbacks=[TqdmCallback(verbose=1), early_stopping])
+    model.save(os.path.join(SAVE_DIR_PATH, f'{mode}_best.h5'))
 
     return model, history, tuner
 
