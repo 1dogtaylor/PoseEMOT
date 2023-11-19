@@ -4,13 +4,13 @@ import tensorflow as tf
 import keras_tuner as kt
 import matplotlib.pyplot as plt
 from keras.models import load_model
-from keras.callbacks import EarlyStopping
+from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from sklearn.model_selection import train_test_split
 from tqdm.keras import TqdmCallback
 
 # Paths
 DATA_PATH = r"C:\Users\Lejett\Desktop\CSCE 873\taylor_datasets\NumpyFiles"
-SAVE_DIR_PATH = r"C:\Users\Lejett\Desktop\REPOSITORIES\PoseEMOT\training_output_lstm"
+SAVE_DIR_PATH = r"C:\Users\Lejett\Desktop\REPOSITORIES\PoseEMOT\training_output_lstm_rlr"
 
 # Data loading and preprocessing
 def load_and_preprocess_data():
@@ -21,18 +21,18 @@ def load_and_preprocess_data():
     np.random.shuffle(indices)
     shuf_train_x, shuf_train_y = train_x[indices], train_y[indices]
 
-    return train_test_split(train_x, train_y, test_size=0.3, random_state=42), \
-           train_test_split(shuf_train_x, shuf_train_y, test_size=0.3, random_state=42)
+    return train_test_split(shuf_train_x, shuf_train_y, test_size=0.3, random_state=42)
 
 
 def build_model(hp):
     model = tf.keras.Sequential()
 
-    for i in range(hp.Int('num_lstm_layers', 1, 4)):
+    for i in range(hp.Int('num_lstm_layers', 1, 3)):
         model.add(tf.keras.layers.LSTM(units=hp.Int('lstm_units_' + str(i), 32, 256, step=32),
                                        return_sequences=True if i < hp.get('num_lstm_layers') - 1 else False)) #,
                                     #    dropout=hp.Float('lstm_dropout_' + str(i), 0.1, 0.5, step=0.1),
                                     #    recurrent_dropout=hp.Float('recurrent_dropout_' + str(i), 0.1, 0.5, step=0.1)))
+        model.add(tf.keras.layers.Dropout(rate=hp.Float('dropout', min_value=0.1, max_value=0.5, step=0.1)))
 
     model.add(tf.keras.layers.Dense(units=hp.Int('dense_units', 32, 256, step=32),
                                     activation='relu',
@@ -45,11 +45,12 @@ def build_model(hp):
     # Choose optimizer
     optimizer_name = hp.Choice('optimizer', ['adam', 'rmsprop'])
     learning_rate = hp.Float('learning_rate', 1e-4, 1e-2, sampling='LOG')
+    clipvalue = hp.Float('clipvalue', 0.01, 10.0, sampling='LOG') 
 
     if optimizer_name == 'adam':
-        optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+        optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, clipvalue=clipvalue)
     elif optimizer_name == 'rmsprop':
-        optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate)
+        optimizer = tf.keras.optimizers.RMSprop(learning_rate=learning_rate, clipvalue=clipvalue)
 
     model.compile(optimizer=optimizer,
                   loss='categorical_crossentropy',
@@ -76,7 +77,9 @@ def tune_and_train(train_x, train_y, val_x, val_y, mode):
 
     best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
     model = build_model(best_hps)
-    history = model.fit(train_x, train_y, epochs=250, validation_data=(val_x, val_y), callbacks=[TqdmCallback(verbose=1), early_stopping])
+    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=0.001)
+
+    history = model.fit(train_x, train_y, epochs=250, validation_data=(val_x, val_y), callbacks=[TqdmCallback(verbose=1), reduce_lr, early_stopping])
     model.save(os.path.join(SAVE_DIR_PATH, f'{mode}_best.h5'))
 
     return model, history, tuner
@@ -122,8 +125,8 @@ def save_summary(model, history, tuner, mode):
 
 # Main execution
 if __name__ == "__main__":
-    _, (shuf_train_x, shuf_val_x, shuf_train_y, shuf_val_y) = load_and_preprocess_data()
+    shuf_train_x, shuf_val_x, shuf_train_y, shuf_val_y = load_and_preprocess_data()
 
-    shuf_model, shuf_history, shuf_tuner = tune_and_train(shuf_train_x, shuf_train_y, shuf_val_x, shuf_val_y, "lstm_shuffled")
+    shuf_model, shuf_history, shuf_tuner = tune_and_train(shuf_train_x, shuf_train_y, shuf_val_x, shuf_val_y, "rlr_lstm")
 
-    save_summary(shuf_model, shuf_history, shuf_tuner, "LSTM Shuffled")
+    save_summary(shuf_model, shuf_history, shuf_tuner, "RLR LSTM")
