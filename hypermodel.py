@@ -168,7 +168,7 @@ tuner = kt.Hyperband(
 # Create callback
 tensorboard = TensorBoard(log_dir=os.path.join(SAVE_DIR_PATH, 'tensorboard_logs'), histogram_freq=10)
 early_stopping = EarlyStopping(monitor='val_loss', patience=15, verbose=1, restore_best_weights=True)
-reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5, min_lr=0.0001)
+reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5, min_lr=0.000001)
 
 # Start the search
 tuner.search(train_x, train_y, epochs=10, validation_data=(val_x, val_y), callbacks=[early_stopping, reduce_lr]) 
@@ -177,6 +177,9 @@ tuner.search(train_x, train_y, epochs=10, validation_data=(val_x, val_y), callba
 # After the search is complete
 best_model = tuner.get_best_models()[0]
 best_hyperparameters = tuner.get_best_hyperparameters()[0]
+# new_learning_rate = 1e-4 
+# best_model.optimizer.learning_rate.assign(new_learning_rate)
+
 # best_batch_size = best_hyperparameters.get('batch_size')
 
 # Save summary and stats
