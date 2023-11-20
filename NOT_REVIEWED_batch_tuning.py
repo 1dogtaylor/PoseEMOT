@@ -4,7 +4,7 @@ import tensorflow as tf
 import keras_tuner as kt
 from keras.models import load_model
 from sklearn.model_selection import train_test_split
-from keras.callbacks import EarlyStopping
+from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 
 # Paths
 DATA_PATH = "path_to_your_data"  # Replace with your data path
@@ -12,14 +12,19 @@ LSTM_MODEL_PATH = "path_to_saved_lstm_model"  # Replace with saved LSTM model pa
 BILSTM_MODEL_PATH = "path_to_saved_bilstm_model"  # Replace with saved BiLSTM model path
 SAVE_DIR_PATH = "path_to_save_results"  # Replace with your save directory path
 
-# Data loading and preprocessing
 def load_and_preprocess_data():
     train_x = np.load(os.path.join(DATA_PATH, "train_x.npy"))
     train_y = np.load(os.path.join(DATA_PATH, "one_hot_labels.npy"))
+
     indices = np.arange(train_x.shape[0])
     np.random.shuffle(indices)
     shuf_train_x, shuf_train_y = train_x[indices], train_y[indices]
-    return train_test_split(shuf_train_x, shuf_train_y, test_size=0.3, random_state=42)
+
+    # Splitting the data into training, validation, and test sets
+    train_x, test_val_x, train_y, test_val_y = train_test_split(shuf_train_x, shuf_train_y, test_size=0.3, random_state=42)
+    val_x, test_x, val_y, test_y = train_test_split(test_val_x, test_val_y, test_size=0.5, random_state=42)
+
+    return train_x, val_x, test_x, train_y, val_y, test_y
 
 # Load pre-trained models
 lstm_model = load_model(LSTM_MODEL_PATH)
@@ -39,7 +44,7 @@ def build_hypermodel(model_type, hp):
     return model, batch_size
 
 # Load data
-train_x, val_x, train_y, val_y = load_and_preprocess_data()
+train_x, val_x, test_x, train_y, val_y, test_y = load_and_preprocess_data()
 
 # Tuner setup for LSTM
 lstm_tuner = kt.Hyperband(lambda hp: build_hypermodel('LSTM', hp),
@@ -58,7 +63,9 @@ bilstm_tuner = kt.Hyperband(lambda hp: build_hypermodel('BiLSTM', hp),
                             project_name='bilstm_batch_size_tuning')
 
 # Early stopping callback
-early_stopping = EarlyStopping(monitor='val_loss', patience=5)
+early_stopping = EarlyStopping(monitor='val_loss', patience=15, restore_best_weights=True)
+reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=0.00001)
+
 
 # Tuning batch sizes for LSTM
 lstm_tuner.search(train_x, train_y, epochs=50, validation_data=(val_x, val_y), callbacks=[early_stopping])
@@ -77,3 +84,10 @@ bilstm_model.fit(train_x, train_y, batch_size=best_bilstm_batch_size, epochs=50,
 # Save the results
 lstm_model.save(os.path.join(SAVE_DIR_PATH, 'lstm_model_best_batch_size.h5'))
 bilstm_model.save(os.path.join(SAVE_DIR_PATH, 'bilstm_model_best_batch_size.h5'))
+
+# Evaluate the model on the test set
+test_loss, test_accuracy = lstm_model.evaluate(test_x, test_y)
+print(f"Test Loss: {test_loss}, Test Accuracy: {test_accuracy}")
+# Evaluate the model on the test set
+test_loss, test_accuracy = bilstm_model.evaluate(test_x, test_y)
+print(f"Test Loss: {test_loss}, Test Accuracy: {test_accuracy}")
