@@ -138,9 +138,9 @@ class EmotionalClassificationHyperModel(kt.HyperModel):
 
         return model
     
-class BatchSizeCallback(Callback):
-    def on_trial_begin(self, trial):
-        self.batch_size = trial.hyperparameters.get('batch_size')
+# class BatchSizeCallback(Callback):
+#     def on_trial_begin(self, trial):
+#         self.batch_size = trial.hyperparameters.get('batch_size')
 
 model_checkpoint = ModelCheckpoint(
     filepath=os.path.join(SAVE_DIR_PATH, 'best_model_checkpoint.h5'), 
@@ -150,7 +150,7 @@ model_checkpoint = ModelCheckpoint(
     verbose=1
 )
 
-batch_size_callback = BatchSizeCallback()
+# batch_size_callback = BatchSizeCallback()
     
 # Load and preprocess data
 train_x, val_x, test_x, train_y, val_y, test_y = load_and_preprocess_data()
@@ -171,19 +171,19 @@ early_stopping = EarlyStopping(monitor='val_loss', patience=15, verbose=1, resto
 reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5, min_lr=0.0001)
 
 # Start the search
-tuner.search(train_x, train_y, epochs=10, validation_data=(val_x, val_y), callbacks=[early_stopping, reduce_lr, batch_size_callback]) 
-batch_size = batch_size_callback.batch_size
+tuner.search(train_x, train_y, epochs=10, validation_data=(val_x, val_y), callbacks=[early_stopping, reduce_lr]) 
+# batch_size = batch_size_callback.batch_size
 
 # After the search is complete
-best_model = tuner.get_best_models(num_models=1)[0]
-best_hyperparameters = tuner.get_best_hyperparameters(num_models=1)[0]
-best_batch_size = best_hyperparameters.get('batch_size')
+best_model = tuner.get_best_models()[0]
+best_hyperparameters = tuner.get_best_hyperparameters()[0]
+# best_batch_size = best_hyperparameters.get('batch_size')
 
 # Save summary and stats
-history = best_model.fit(train_x, train_y, epochs=100, validation_data=(val_x, val_y), batch_size=best_batch_size, callbacks=[tensorboard, early_stopping, reduce_lr, model_checkpoint])  # Adjust epochs as needed
+history = best_model.fit(train_x, train_y, epochs=100, validation_data=(val_x, val_y), callbacks=[tensorboard, early_stopping, reduce_lr, model_checkpoint])  # Adjust epochs as needed
 save_summary(best_model, history, tuner, 'BestModel')
 
-eval_hist = best_model.evaluate(test_x, test_y, batch_size=best_batch_size)
+eval_hist = best_model.evaluate(test_x, test_y)
 
 # Save evaluation results
 with open(os.path.join(SAVE_DIR_PATH, 'summary.txt'), 'a') as f:
