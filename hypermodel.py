@@ -172,6 +172,7 @@ reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5, min_lr
 
 # Start the search
 tuner.search(train_x, train_y, epochs=10, validation_data=(val_x, val_y), callbacks=[early_stopping, reduce_lr]) 
+save_learning_curves(tuner)
 # batch_size = batch_size_callback.batch_size
 
 # After the search is complete
