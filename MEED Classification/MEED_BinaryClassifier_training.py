@@ -39,9 +39,10 @@ def load_data():
 		pbar.update(1)
 		filename_current = row['filename']
 		filename_current = filename_current.split("_")[2]
-		if filename_current == filename_prev:
+
+		if filename_current == filename_prev: # if the filename is the same, append the pose
 			coords.append(row['pose'])
-		else:
+		else: # if the filename changes, start a new frame set
 			coords = []
 			coords.append(row['pose'])
 
@@ -53,6 +54,7 @@ def load_data():
 		# if i == 1000: # for testing 1000 poses
 		# 	break
 		filename_prev = filename_current
+
 	print(f"Number of poses: {len(pose_set)}")
 	print(f"Number of emotions: {len(emotion_set)}")
 
@@ -92,11 +94,9 @@ def load_data():
 				GEMEPdf = pd.concat([GEMEPdf, data])
 				print(file)
 
-	prev_emotions = []
 	pose_frames = []
 	GEMEPframe_set = []
 	emotion_set = []
-	videos = []
 	prev_emotion = ""
 
 	i = 0
@@ -120,6 +120,23 @@ def load_data():
 
 	print(f"Number of GEMEP frame sets: {len(GEMEPframe_set)}")
 	print(f"Number of emotions: {len(emotion_set)}")
+
+	# convert to numpy arrays
+	MEEDframe_set = np.array(MEEDframe_set)
+	GEMEPframe_set = np.array(GEMEPframe_set)
+	labels = np.array(labels)
+	emotion_set = np.array(emotion_set)
+
+	MEED_labels = meed_one_hot_labels(labels, "", "multiclass")
+	GEMEP_labels = gemep_one_hot_labels(emotion_set, "", "multiclass")
+
+	# combine the data
+	X = np.concatenate((MEEDframe_set, GEMEPframe_set), axis=0)
+	Y = np.concatenate((MEED_labels, GEMEP_labels), axis=0)
+
+	# save
+	np.save('MEED_GEMEP_x_7.npy', X)
+	np.save('MEED_GEMEP_y_7.npy', Y)
 
 def meed_one_hot_labels(labels,emotion_class,mode):
 	if mode == "binary":
@@ -274,10 +291,15 @@ def classifier_training(X,Y, classifier_name, mode):
 		pickle.dump(history.history, f)
 	model.save(classifier_name)
 
-X = np.load('MEED_GEMEP_x.npy')
-Y = np.load('MEED_GEMEP_y.npy')
+
+# load the data
+#load_data()
+
+X = np.load('MEED_GEMEP_x_7.npy')
+Y = np.load('MEED_GEMEP_y_7.npy')
 print(f"X shape: {X.shape}")
 print(f"Y shape: {Y.shape}")
+
 emotions_classes = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surprise']
 for emotion_class in emotions_classes:
 	print(f"Training {emotion_class} binary classifier...")
